@@ -64,7 +64,7 @@ func (t *tester) Await(name string) error {
 	}
 }
 
-func (t *tester) CreateDisks(n int, diskType string) ([]disk, error) {
+func (t *tester) CreateDisks(n int, diskType string, diskSize int64) ([]disk, error) {
 	disks := make([]disk, n)
 
 	for i := 0; i < n; i++ {
@@ -75,7 +75,7 @@ func (t *tester) CreateDisks(n int, diskType string) ([]disk, error) {
 
 		op, err := t.c.Disks.Insert(t.project, t.zone, &compute.Disk{
 			Name:   name,
-			SizeGb: 10,
+			SizeGb: diskSize,
 			Type:   fmt.Sprintf("https://www.googleapis.com/compute/v1/projects/%s/zones/%s/diskTypes/%s", t.project, t.zone, diskType),
 		}).Do()
 		if err != nil {
@@ -185,8 +185,9 @@ func main() {
 	var (
 		app      = kingpin.New(filepath.Base(os.Args[0]), "Attempts to replicate a possible GCE local-ssd bug.").DefaultEnvars()
 		debug    = app.Flag("debug", "Run with debug logging.").Short('d').Bool()
-		diskPath = app.Flag("path", "Path under which new disk devices are created").Default("/dev/disk/by-id").String()
+		diskPath = app.Flag("disk-path", "Path under which new disk devices are created").Default("/dev/disk/by-id").String()
 		diskType = app.Flag("disk-type", "Type of disk (pd-standard, pd-ssd)").Default("pd-standard").String()
+		diskSize = app.Flag("disk-size", "Size of disks to create in GB").Default("128").Int64()
 		disks    = app.Arg("disks", "Number of disks to create and attach").Int()
 	)
 	kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -225,7 +226,7 @@ func main() {
 	t := tester{log, c, id, project, zone}
 
 	// Create new disks
-	created, err := t.CreateDisks(*disks, *diskType)
+	created, err := t.CreateDisks(*disks, *diskType, *diskSize)
 	kingpin.FatalIfError(err, "cannot create GCE disks")
 
 	// Attach them once they've finished creating
