@@ -109,7 +109,7 @@ func (t *tester) AttachDisks(instance string, disks []disk) error {
 
 // MountDisks watches for new disks and attempts to format and mount them using
 // the same method as a Linux Kubelet.
-func MountDisks(log *zap.Logger, path string) (*fsnotify.Watcher, error) { // nolint:gocyclo
+func MountDisks(log *zap.Logger, path string, systemd bool) (*fsnotify.Watcher, error) { // nolint:gocyclo
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot watch for new disks")
@@ -159,9 +159,10 @@ func MountDisks(log *zap.Logger, path string) (*fsnotify.Watcher, error) { // no
 				l.Info("Formatted disk")
 
 				// Mount the disk
-				mntcmd := []string{
-					"systemd-run", "--scope", "--", "mount", "-t", "ext4", "-o", "rw,seclabel,relatime,data=ordered",
-					disk, mp,
+				mntcmd := []string{"mount", "-t", "ext4", "-o", "rw,seclabel,relatime,data=ordered", disk, mp}
+				if systemd {
+					sr := []string{"systemd-run", "--scope", "--", "mount", "-t", "ext4", "-o", "rw,seclabel,relatime,data=ordered"}
+					mntcmd = append(sr, mntcmd...)
 				}
 				if err := exec.Command(mntcmd[0], mntcmd[1:]...).Run(); err != nil { // nolint:gas
 					l.Error("Error mounting disk", zap.Error(err), zap.Strings("cmd", mntcmd))
@@ -184,6 +185,7 @@ func main() {
 	var (
 		app      = kingpin.New(filepath.Base(os.Args[0]), "Attempts to replicate a possible GCE local-ssd bug.").DefaultEnvars()
 		debug    = app.Flag("debug", "Run with debug logging.").Short('d').Bool()
+		systemd  = app.Flag("use-systemd", "Run mount via systemd-run").Bool()
 		diskPath = app.Flag("disk-path", "Path under which new disk devices are created").Default("/dev/disk/by-id").String()
 		diskType = app.Flag("disk-type", "Type of disk (pd-standard, pd-ssd)").Default("pd-standard").String()
 		diskSize = app.Flag("disk-size", "Size of disks to create in GB").Default("128").Int64()
@@ -218,7 +220,7 @@ func main() {
 	kingpin.FatalIfError(err, "cannot determine this GCE instance's name via the metadata endpoint")
 
 	// Watch for disks to mount.
-	watcher, err := MountDisks(log, *diskPath)
+	watcher, err := MountDisks(log, *diskPath, *systemd)
 	kingpin.FatalIfError(err, "cannot mount GCE disks")
 	defer watcher.Close()
 
