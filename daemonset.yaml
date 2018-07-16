@@ -41,7 +41,7 @@ spec:
       - name: dd
         image: "negz/gvb:latest"
         imagePullPolicy: Always
-        command: ['sh', '-c', 'while true; do dd if=/dev/zero of=/varlibdocker/gvb bs=1000000 count=1000 status=progress;done']
+        command: ['sh', '-c', 'while true; do dd if=/dev/zero of=/varlibdocker/gvb bs=2k count=1000k status=progress;done']
         securityContext:
           privileged: true
         volumeMounts:
