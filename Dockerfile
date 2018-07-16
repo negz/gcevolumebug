@@ -6,5 +6,7 @@ RUN dep ensure
 RUN go build -o /gvb .
 
 FROM debian:stretch-slim
-RUN apt-get update && apt-get install -y --no-install-recommends sysstat systemd && apt-get clean
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends sysstat systemd ca-certificates \
+    && apt-get clean
 COPY --from=build /gvb /gvb

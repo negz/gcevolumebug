@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gvb
+  labels:
+    component: gvb
+spec:
+  selector:
+    matchLabels:
+      component: gvb
+  template:
+    metadata:
+      labels:
+        component: gvb
+    spec:
+      volumes:
+      - name: mnt
+        hostPath:
+          path: /mnt
+          type: Directory
+      - name: dev
+        hostPath:
+          path: /dev
+          type: Directory
+      - name: varlibdocker
+        hostPath:
+          path: /var/lib/docker
+          type: Directory
+      containers:
+      - name: gvb
+        image: "negz/gvb:latest"
+        imagePullPolicy: Always
+        command: ['/gvb', '--disk-path=/nodedev/disk/by-id', '10']
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /mnt
+          name: mnt
+        - mountPath: /nodedev
+          name: dev
+      - name: dd
+        image: "negz/gvb:latest"
+        imagePullPolicy: Always
+        command: ['sh', '-c', 'while true; do dd if=/dev/zero of=/varlibdocker/gvb bs=1000000 count=1000 status=progress;done']
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /varlibdocker
+          name: varlibdocker
+      - name: iostat
+        image: "negz/gvb:latest"
+        imagePullPolicy: Always
+        command: ['sh', '-c', 'iostat -x -d 2 -t sdb']
+        securityContext:
+          privileged: true

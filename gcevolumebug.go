@@ -151,7 +151,7 @@ func MountDisks(log *zap.Logger, path string) (*fsnotify.Watcher, error) { // no
 				l.Info("Created mountpath")
 
 				// Format the disk
-				fmtcmd := []string{"/usr/sbin/mkfs.ext4", "-F", "-m0", disk}
+				fmtcmd := []string{"mkfs.ext4", "-F", "-m0", disk}
 				if err := exec.Command(fmtcmd[0], fmtcmd[1:]...).Run(); err != nil { // nolint:gas
 					l.Error("Error formatting disk", zap.Error(err), zap.Strings("cmd", fmtcmd))
 					continue
@@ -160,8 +160,7 @@ func MountDisks(log *zap.Logger, path string) (*fsnotify.Watcher, error) { // no
 
 				// Mount the disk
 				mntcmd := []string{
-					"/usr/bin/systemd-run", "--scope", "--",
-					"mount", "-t", "ext4", "-o", "rw,seclabel,relatime,data=ordered",
+					"systemd-run", "--scope", "--", "mount", "-t", "ext4", "-o", "rw,seclabel,relatime,data=ordered",
 					disk, mp,
 				}
 				if err := exec.Command(mntcmd[0], mntcmd[1:]...).Run(); err != nil { // nolint:gas
