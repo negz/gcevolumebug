@@ -91,20 +91,20 @@ func (t *tester) CreateDisks(n int, diskType string, diskSize int64) ([]disk, er
 	return disks, nil
 }
 
-func (t *tester) AttachDisks(instance string, disks []disk) error {
-	for _, disk := range disks {
-		l := t.log.With(zap.String("instance", instance), zap.String("url", disk.url), zap.String("name", disk.name))
-		if _, err := t.c.Instances.AttachDisk(t.project, t.zone, instance, &compute.AttachedDisk{
-			Source:     disk.url,
-			DeviceName: disk.name,
-			Interface:  interfaceSCSI,
-		}).Do(); err != nil {
-			t.log.Error("Disk attachment failed", zap.Error(err))
-		}
-		l.Info("Attached disk")
+func (t *tester) AttachDisks(instance string, disks []disk) {
+	for _, d := range disks {
+		go func(disk disk) {
+			l := t.log.With(zap.String("instance", instance), zap.String("url", disk.url), zap.String("name", disk.name))
+			if _, err := t.c.Instances.AttachDisk(t.project, t.zone, instance, &compute.AttachedDisk{
+				Source:     disk.url,
+				DeviceName: disk.name,
+				Interface:  interfaceSCSI,
+			}).Do(); err != nil {
+				t.log.Error("Disk attachment failed", zap.Error(err))
+			}
+			l.Info("Attached disk")
+		}(d)
 	}
-	t.log.Info("All disks attached")
-	return nil
 }
 
 // MountDisks watches for new disks and attempts to format and mount them using
@@ -231,7 +231,7 @@ func main() {
 	kingpin.FatalIfError(err, "cannot create GCE disks")
 
 	// Attach them once they've finished creating
-	kingpin.FatalIfError(t.AttachDisks(instance, created), "cannot attach GCE disks")
+	t.AttachDisks(instance, created)
 
 	exit := make(chan os.Signal)
 	signal.Notify(exit, syscall.SIGINT, syscall.SIGTERM)
