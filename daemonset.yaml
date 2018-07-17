@@ -30,7 +30,8 @@ spec:
       - name: gvb
         image: "negz/gvb:latest"
         imagePullPolicy: Always
-        command: ['/gvb', '--disk-path=/nodedev/disk/by-id', '10']
+        # We sleep for 60 seconds to give our dd time to warm up before we start attaching disks.
+        command: ['sh', '-c', 'sleep 60 && /gvb --disk-path=/nodedev/disk/by-id 10']
         securityContext:
           privileged: true
         volumeMounts:
